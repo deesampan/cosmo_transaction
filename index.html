@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cash Income</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #8a8a8e;
+    --line: #e7e5e0;
+    --accent: #2f7d5b;
+    --accent-ink: #ffffff;
+    --danger: #c2410c;
+    --focus: #2f7d5b33;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141414;
+      --card: #1e1e1e;
+      --text: #f2f2f2;
+      --muted: #9a9a9a;
+      --line: #2c2c2c;
+      --accent: #4fbf8b;
+      --accent-ink: #0d1f17;
+      --danger: #f97352;
+      --focus: #4fbf8b33;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", "Leelawadee UI", "Noto Sans Thai", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  input, button { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 80px; }
+
+  /* Header: total + add form stay visible while scrolling */
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 20px 0 14px; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--muted); }
+  .count { font-size: 14px; color: var(--muted); }
+  .total {
+    margin: 2px 0 14px;
+    font-size: 44px; font-weight: 700; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  form { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; }
+  form input {
+    min-width: 0;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+  form input.bad { border-color: var(--danger); }
+  .add {
+    padding: 0 20px;
+    background: var(--accent); color: var(--accent-ink);
+    border: 0; border-radius: 10px;
+    font-weight: 600;
+  }
+  @media (max-width: 440px) {
+    form { grid-template-columns: 100px 1fr; }
+    .add { grid-column: 1 / -1; padding: 12px; }
+  }
+
+  /* List */
+  ul {
+    list-style: none; margin: 0; padding: 0;
+    background: var(--card);
+    border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden;
+  }
+  li {
+    display: grid; grid-template-columns: 26px 1fr 84px 32px;
+    align-items: center; gap: 4px;
+    padding: 2px 6px 2px 12px;
+    border-top: 1px solid var(--line);
+  }
+  li:first-child { border-top: 0; }
+  .n { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  li input {
+    width: 100%; min-width: 0;
+    padding: 10px 6px;
+    background: transparent; border: 0; border-radius: 6px;
+  }
+  li input:focus { outline: none; background: var(--bg); }
+  .amt { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .del {
+    width: 32px; height: 32px;
+    background: transparent; border: 0; border-radius: 8px;
+    color: var(--muted); font-size: 20px; line-height: 1;
+  }
+  .del:hover, .del:focus-visible { color: var(--danger); background: var(--bg); outline: none; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+  .foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+  .clear { padding: 6px 0; background: none; border: 0; color: var(--muted); font-size: 14px; }
+  .clear:hover { color: var(--danger); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 16px;
+    max-width: calc(100% - 32px);
+    padding: 10px 16px;
+    background: var(--text); color: var(--bg);
+    border-radius: 10px; font-size: 14px;
+  }
+  .toast[hidden] { display: none; }
+  .toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast button { padding: 0; background: none; border: 0; font-weight: 700; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <h1>เงินสด · Cash income</h1>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="total" id="total">฿0</div>
+    <form id="form" autocomplete="off">
+      <input id="amount" inputmode="decimal" placeholder="Amount" aria-label="Amount">
+      <input id="detail" placeholder="Detail" aria-label="Detail">
+      <button class="add" type="submit">Add</button>
+    </form>
+  </header>
+
+  <ul id="list"></ul>
+  <div class="empty" id="empty" hidden>No transactions yet.</div>
+
+  <div class="foot">
+    <button class="clear" id="clear" type="button">Clear all</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden>
+  <span id="toastMsg"></span>
+  <button id="undo" type="button">Undo</button>
+</div>
+
+<script>
+  const KEY = 'cosmo-transactions-v1';
+
+  // Transactions copied from the handwritten cash sheet
+  const SEED = [
+    [200, 'เค้ก + เทียน 2'],
+    [150, 'เค้ก'],
+    [45, 'เครปเค้ก'],
+    [30, 'ของเล่น ×3'],
+    [25, 'บราวนี่ 1 free 1'],
+    [100, 'เค้กฝอยทอง ×2'],
+    [10, 'ของเล่น'],
+    [40, 'ของเล่น'],
+    [20, 'ของเล่น'],
+    [100, 'เค้กกล่อง'],
+    [20, 'ของเล่น'],
+    [100, 'เค้ก 3 เหลี่ยม ×3'],
+    [20, 'ของเล่น'],
+    [24, 'ขนมปังแยม'],
+    [20, 'ของเล่น'],
+    [50, 'ชิฟฟ่อน ×4'],
+    [10, 'ของเล่น'],
+    [10, 'ของเล่น'],
+    [40, 'เยลลี่'],
+    [20, 'ของเล่น'],
+    [150, 'เค้ก'],
+    [37, 'เค้กของแถม (free 1)'],
+    [7, 'ชิฟฟ่อน'],
+    [150, 'เค้ก 1 ก้อน'],
+    [30, 'ของเล่น + เยลลี่'],
+    [40, 'ซอฟเค้ก'],
+    [98, 'เค้กของแถม (เซ็ต)'],
+    [50, 'othering'],
+    [10, 'othering'],
+    [20, 'othering'],
+    [30, 'othering'],
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const list = $('list'), totalEl = $('total'), countEl = $('count'), empty = $('empty');
+  const form = $('form'), amountIn = $('amount'), detailIn = $('detail');
+  const toast = $('toast'), toastMsg = $('toastMsg');
+
+  let items = load();
+  let undoSnapshot = null, toastTimer = null;
+
+  function load() {
+    try {
+      const saved = localStorage.getItem(KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return SEED.map(([amount, detail]) => ({ amount, detail }));
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {}
+  }
+
+  const fmt = (n) => '฿' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+  function parseAmount(v) {
+    const n = parseFloat(String(v).replace(/[,฿\s]/g, ''));
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function renderTotal() {
+    const sum = items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+    totalEl.textContent = fmt(sum);
+    countEl.textContent = items.length + (items.length === 1 ? ' item' : ' items');
+  }
+
+  function render() {
+    list.innerHTML = '';
+    items.forEach((it, i) => {
+      const li = document.createElement('li');
+      li.innerHTML =
+        '<span class="n"></span>' +
+        '<input class="det" aria-label="Detail">' +
+        '<input class="amt" inputmode="decimal" aria-label="Amount">' +
+        '<button class="del" type="button" aria-label="Delete">×</button>';
+      const [n, det, amt, del] = li.children;
+      n.textContent = i + 1;
+      det.value = it.detail;
+      amt.value = it.amount;
+
+      det.addEventListener('input', () => { it.detail = det.value; save(); });
+      amt.addEventListener('input', () => {
+        const v = parseAmount(amt.value);
+        it.amount = Number.isNaN(v) ? 0 : v;
+        renderTotal();
+        save();
+      });
+      amt.addEventListener('blur', () => { amt.value = it.amount; });
+      del.addEventListener('click', () => {
+        snapshot();
+        items.splice(i, 1);
+        commit('Deleted ' + fmt(it.amount) + (it.detail ? ' · ' + it.detail : ''));
+      });
+
+      list.append(li);
+    });
+    list.hidden = items.length === 0;
+    empty.hidden = items.length > 0;
+    renderTotal();
+  }
+
+  function snapshot() { undoSnapshot = items.map((it) => ({ ...it })); }
+
+  function commit(message) {
+    save();
+    render();
+    toastMsg.textContent = message;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.hidden = true; undoSnapshot = null; }, 6000);
+  }
+
+  $('undo').addEventListener('click', () => {
+    if (!undoSnapshot) return;
+    items = undoSnapshot;
+    undoSnapshot = null;
+    toast.hidden = true;
+    save();
+    render();
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = parseAmount(amountIn.value);
+    if (Number.isNaN(amount) || amount === 0) {
+      amountIn.classList.add('bad');
+      amountIn.focus();
+      return;
+    }
+    items.push({ amount, detail: detailIn.value.trim() });
+    save();
+    render();
+    form.reset();
+    amountIn.focus();
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  });
+
+  amountIn.addEventListener('input', () => amountIn.classList.remove('bad'));
+
+  $('clear').addEventListener('click', () => {
+    if (!items.length || !confirm('Delete all ' + items.length + ' transactions?')) return;
+    snapshot();
+    items = [];
+    commit('All transactions cleared');
+  });
+
+  render();
+</script>
+</body>
+</html>
