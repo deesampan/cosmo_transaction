@@ -239,7 +239,8 @@
 </div>
 
 <script>
-  const KEY = 'cosmo-transactions-v1';
+  // Bump the version to reload SEED in browsers that saved an older list
+  const KEY = 'cosmo-transactions-v2';
   const TYPE_KEY = 'cosmo-last-type';
 
   const TYPES = {
@@ -248,7 +249,7 @@
     half: 'คนละครึ่ง',
   };
 
-  // Transactions copied from the handwritten cash sheet (all เงินสด)
+  // Transactions copied from the handwritten sheet: [amount, detail, type (default เงินสด)]
   const SEED = [
     [200, 'เค้ก + เทียน 2'],
     [150, 'เค้ก'],
@@ -281,6 +282,7 @@
     [10, 'othering'],
     [20, 'othering'],
     [30, 'othering'],
+    [40, '', 'half'],
   ];
 
   const $ = (id) => document.getElementById(id);
@@ -299,7 +301,7 @@
       const saved = localStorage.getItem(KEY);
       if (saved) data = JSON.parse(saved);
     } catch (e) {}
-    if (!Array.isArray(data)) data = SEED.map(([amount, detail]) => ({ amount, detail }));
+    if (!Array.isArray(data)) data = SEED.map(([amount, detail, type]) => ({ amount, detail, type }));
     // Entries saved before types existed were all cash
     return data.map((it) => ({ ...it, type: TYPES[it.type] ? it.type : 'cash' }));
   }
