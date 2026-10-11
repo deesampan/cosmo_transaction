@@ -47,20 +47,46 @@
     -webkit-font-smoothing: antialiased;
   }
   input, button, select { font: inherit; color: inherit; }
-  button, select { cursor: pointer; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.35; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
   .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 80px; }
 
-  /* Header: total, type picker and add form stay visible while scrolling */
-  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 20px 0 14px; }
-  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--muted); }
-  .count { font-size: 14px; color: var(--muted); }
-  .total {
-    margin: 2px 0 14px;
-    font-size: 44px; font-weight: 700; letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
+  /* Header: day, total, type picker and add form stay visible while scrolling */
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 16px 0 14px; }
+
+  /* Day switcher */
+  .day { display: flex; align-items: center; gap: 6px; }
+  .nav {
+    display: grid; place-items: center; flex: none;
+    width: 36px; height: 36px;
+    background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px;
+    font-size: 20px; line-height: 1;
   }
+  .day-pick { position: relative; flex: 1; min-width: 0; }
+  .day-text {
+    display: block;
+    padding: 7px 12px;
+    background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px;
+    text-align: center; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* The real date input sits invisibly on top so tapping the label opens the picker */
+  .day-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+  .today-btn {
+    flex: none; height: 36px; padding: 0 14px;
+    background: var(--text); color: var(--bg);
+    border: 0; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+  }
+  .today-btn[hidden] { display: none; }
+
+  .total-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 10px 0 12px; }
+  .total { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .count { font-size: 14px; color: var(--muted); white-space: nowrap; }
 
   /* Type picker — each option also shows its subtotal */
   .types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
@@ -98,20 +124,22 @@
     font-weight: 600;
   }
   @media (max-width: 440px) {
-    form { grid-template-columns: 100px 1fr; }
-    .add { grid-column: 1 / -1; padding: 12px; }
+    form { grid-template-columns: 88px 1fr auto; }
+    .add { padding: 0 16px; }
     .types button { padding: 8px 10px; }
     .types b { font-size: 14px; }
+    .total { font-size: 38px; }
+    .day-text { padding-inline: 8px; font-size: 15px; }
   }
 
-  /* List */
-  ul {
+  /* Transactions for the selected day */
+  .tx {
     list-style: none; margin: 0; padding: 0;
     background: var(--card);
     border: 1px solid var(--line); border-radius: 14px;
     overflow: hidden;
   }
-  li {
+  .tx > li {
     display: grid;
     grid-template-columns: 22px 80px 1fr auto 32px 32px;
     grid-template-areas: "n tag det amt edit del";
@@ -120,8 +148,8 @@
     border-top: 1px solid var(--line);
     cursor: pointer;
   }
-  li:first-child { border-top: 0; }
-  li:hover { background: var(--bg); }
+  .tx > li:first-child { border-top: 0; }
+  .tx > li:hover { background: var(--bg); }
   .n { grid-area: n; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tag {
     grid-area: tag; justify-self: start;
@@ -147,7 +175,7 @@
   .del { grid-area: del; }
   .del:hover, .del:focus-visible { color: var(--danger); }
   @media (max-width: 440px) {
-    li {
+    .tx > li {
       grid-template-columns: 22px 1fr auto 32px 32px;
       grid-template-areas: "n det amt edit del" "n tag amt edit del";
       row-gap: 2px; padding-block: 8px;
@@ -156,7 +184,7 @@
   }
 
   /* A row being edited */
-  li.editing { display: block; padding: 12px; background: var(--t-bg); cursor: default; }
+  .tx > li.editing { display: block; padding: 12px; background: var(--t-bg); cursor: default; }
   .edit-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
   .edit-types button {
     padding: 7px 6px;
@@ -169,15 +197,16 @@
     border-color: var(--t); box-shadow: inset 0 0 0 1px var(--t);
   }
   .edit-fields { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
-  .edit-fields input {
+  .edit-fields input, .e-date {
     min-width: 0;
     padding: 10px 12px;
     background: var(--card);
     border: 1px solid var(--line); border-radius: 8px;
   }
-  .edit-fields input:focus { outline: none; border-color: var(--t); }
+  .edit-fields input:focus, .e-date:focus { outline: none; border-color: var(--t); }
   .edit-fields input.bad { border-color: var(--danger); }
-  .edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .edit-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .e-date { margin-right: auto; padding: 7px 10px; font-size: 14px; }
   .edit-actions button {
     padding: 8px 18px;
     background: var(--card);
@@ -187,12 +216,41 @@
   .edit-actions .save { background: var(--t); color: var(--on-type); border-color: transparent; }
   @media (max-width: 440px) {
     .edit-fields { grid-template-columns: 100px 1fr; }
+    .edit-actions button { padding: 8px 14px; }
   }
-  .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+  .empty {
+    padding: 28px 16px; text-align: center; color: var(--muted);
+    border: 1px dashed var(--line); border-radius: 14px;
+  }
 
   .foot { display: flex; justify-content: flex-end; margin-top: 12px; }
   .clear { padding: 6px 0; background: none; border: 0; color: var(--muted); font-size: 14px; }
   .clear:hover { color: var(--danger); }
+  .clear[hidden] { display: none; }
+
+  /* Every day that has entries */
+  .days { margin-top: 28px; }
+  .days[hidden] { display: none; }
+  .days h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .day-list {
+    list-style: none; margin: 0; padding: 0;
+    background: var(--card);
+    border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden;
+  }
+  .day-list li + li { border-top: 1px solid var(--line); }
+  .day-list button {
+    display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px;
+    width: 100%; padding: 12px 14px;
+    background: none; border: 0; text-align: left;
+  }
+  .day-list button:hover { background: var(--bg); }
+  .day-list button[aria-current="true"] { box-shadow: inset 3px 0 0 var(--text); }
+  .day-list .d { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .day-list button[aria-current="true"] .d { font-weight: 600; }
+  .day-list .c { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .day-list .s { font-weight: 700; font-variant-numeric: tabular-nums; }
 
   .toast {
     position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
@@ -210,11 +268,22 @@
 <body>
 <div class="wrap">
   <header id="header" data-type="cash">
-    <div class="top">
-      <h1>รายรับ · Income</h1>
+    <h1 class="visually-hidden">รายรับ · Income</h1>
+
+    <div class="day">
+      <button class="nav" id="prev" type="button" aria-label="Previous day">‹</button>
+      <div class="day-pick">
+        <span class="day-text" id="dayText"></span>
+        <input type="date" id="dayInput" aria-label="Choose day">
+      </div>
+      <button class="nav" id="next" type="button" aria-label="Next day">›</button>
+      <button class="today-btn" id="todayBtn" type="button" hidden>Today</button>
+    </div>
+
+    <div class="total-row">
+      <div class="total" id="total">฿0</div>
       <span class="count" id="count"></span>
     </div>
-    <div class="total" id="total">฿0</div>
 
     <div class="types" id="types" role="radiogroup" aria-label="Income type"></div>
 
@@ -225,12 +294,17 @@
     </form>
   </header>
 
-  <ul id="list"></ul>
-  <div class="empty" id="empty" hidden>No transactions yet.</div>
+  <ul class="tx" id="list"></ul>
+  <div class="empty" id="empty" hidden>No income yet for this day.</div>
 
   <div class="foot">
-    <button class="clear" id="clear" type="button">Clear all</button>
+    <button class="clear" id="clear" type="button">Clear this day</button>
   </div>
+
+  <section class="days" id="days" hidden>
+    <h2>All days</h2>
+    <ul class="day-list" id="dayList"></ul>
+  </section>
 </div>
 
 <div class="toast" id="toast" hidden>
@@ -239,9 +313,10 @@
 </div>
 
 <script>
-  // Bump the version to reload SEED in browsers that saved an older list
   const KEY = 'cosmo-transactions-v2';
   const TYPE_KEY = 'cosmo-last-type';
+  // Day the paper sheet was entered; entries saved before dates existed belong to it
+  const SEED_DATE = '2026-10-10';
 
   const TYPES = {
     cash: 'เงินสด',
@@ -289,10 +364,43 @@
   const list = $('list'), totalEl = $('total'), countEl = $('count'), empty = $('empty');
   const header = $('header'), typesEl = $('types');
   const form = $('form'), amountIn = $('amount'), detailIn = $('detail');
+  const dayText = $('dayText'), dayInput = $('dayInput');
+  const prevBtn = $('prev'), nextBtn = $('next'), todayBtn = $('todayBtn');
+  const clearBtn = $('clear'), daysSection = $('days'), dayList = $('dayList');
   const toast = $('toast'), toastMsg = $('toastMsg');
+
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  // ---- Dates (local time, stored as YYYY-MM-DD) ----
+  const pad = (n) => String(n).padStart(2, '0');
+  const dayKey = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const todayKey = () => dayKey(new Date());
+  function fromKey(k) {
+    const [y, m, d] = k.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function shiftDay(k, n) {
+    const d = fromKey(k);
+    d.setDate(d.getDate() + n);
+    return dayKey(d);
+  }
+  function dayLabel(k) {
+    const t = todayKey();
+    // Year is only shown for dates outside the current year
+    const text = fromKey(k).toLocaleDateString('en-GB', {
+      weekday: 'short', day: 'numeric', month: 'short',
+      year: k.slice(0, 4) === t.slice(0, 4) ? undefined : 'numeric',
+    });
+    if (k === t) return 'Today · ' + text;
+    if (k === shiftDay(t, -1)) return 'Yesterday · ' + text;
+    return text;
+  }
 
   let items = load();
   let currentType = loadType();
+  let viewDay = todayKey();
+  let lastToday = viewDay;
+  let editing = null; // id of the row currently being edited
   let undoSnapshot = null, toastTimer = null;
 
   function load() {
@@ -302,8 +410,13 @@
       if (saved) data = JSON.parse(saved);
     } catch (e) {}
     if (!Array.isArray(data)) data = SEED.map(([amount, detail, type]) => ({ amount, detail, type }));
-    // Entries saved before types existed were all cash
-    return data.map((it) => ({ ...it, type: TYPES[it.type] ? it.type : 'cash' }));
+    // Fill in fields that older saved entries don't have
+    return data.map((it) => ({
+      ...it,
+      id: it.id || uid(),
+      type: TYPES[it.type] ? it.type : 'cash',
+      date: it.date || SEED_DATE,
+    }));
   }
 
   function loadType() {
@@ -320,13 +433,14 @@
 
   const fmtNum = (n) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
   const fmt = (n) => '฿' + fmtNum(n);
+  const plural = (n) => n + (n === 1 ? ' item' : ' items');
 
   function parseAmount(v) {
     const n = parseFloat(String(v).replace(/[,฿\s]/g, ''));
     return Number.isFinite(n) ? n : NaN;
   }
 
-  // Type picker buttons
+  // ---- Type picker ----
   const typeButtons = {};
   for (const [key, label] of Object.entries(TYPES)) {
     const b = document.createElement('button');
@@ -347,32 +461,73 @@
     try { localStorage.setItem(TYPE_KEY, key); } catch (e) {}
   }
 
-  function renderTotal() {
-    const sums = { cash: 0, transfer: 0, half: 0 };
-    let sum = 0;
-    for (const it of items) {
-      const a = Number(it.amount) || 0;
-      sums[it.type] += a;
-      sum += a;
-    }
-    totalEl.textContent = fmt(sum);
-    countEl.textContent = items.length + (items.length === 1 ? ' item' : ' items');
-    for (const k in TYPES) typeButtons[k].querySelector('span').textContent = fmt(sums[k]);
-  }
-
+  // ---- Rendering ----
   const PENCIL =
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 
-  let editing = null; // index of the row currently being edited
-
   function render() {
+    const day = items.filter((it) => it.date === viewDay);
     list.innerHTML = '';
-    items.forEach((it, i) => list.append(i === editing ? editRow(it) : viewRow(it, i)));
-    list.hidden = items.length === 0;
-    empty.hidden = items.length > 0;
-    renderTotal();
+    day.forEach((it, i) => list.append(it.id === editing ? editRow(it) : viewRow(it, i)));
+    list.hidden = day.length === 0;
+    empty.hidden = day.length > 0;
+    clearBtn.hidden = day.length === 0;
+    renderTotals(day);
+    renderDayBar();
+    renderDays();
+  }
+
+  function renderTotals(day) {
+    const sums = { cash: 0, transfer: 0, half: 0 };
+    let sum = 0;
+    for (const it of day) {
+      const a = Number(it.amount) || 0;
+      sums[it.type] += a;
+      sum += a;
+    }
+    totalEl.textContent = fmt(sum);
+    countEl.textContent = plural(day.length);
+    for (const k in TYPES) typeButtons[k].querySelector('span').textContent = fmt(sums[k]);
+  }
+
+  function renderDayBar() {
+    const t = todayKey();
+    dayText.textContent = dayLabel(viewDay);
+    dayInput.value = viewDay;
+    dayInput.max = t;
+    nextBtn.disabled = viewDay >= t;
+    todayBtn.hidden = viewDay === t;
+  }
+
+  function renderDays() {
+    const byDay = new Map();
+    for (const it of items) {
+      const d = byDay.get(it.date) || { count: 0, sum: 0 };
+      d.count++;
+      d.sum += Number(it.amount) || 0;
+      byDay.set(it.date, d);
+    }
+    const keys = [...byDay.keys()].sort().reverse();
+    daysSection.hidden = keys.length === 0;
+    dayList.innerHTML = '';
+    for (const k of keys) {
+      const { count, sum } = byDay.get(k);
+      const li = document.createElement('li');
+      li.innerHTML = '<button type="button"><span class="d"></span><span class="c"></span><span class="s"></span></button>';
+      const b = li.firstChild;
+      const [d, c, s] = b.children;
+      d.textContent = dayLabel(k);
+      c.textContent = plural(count);
+      s.textContent = fmt(sum);
+      if (k === viewDay) b.setAttribute('aria-current', 'true');
+      b.addEventListener('click', () => {
+        setDay(k);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      dayList.append(li);
+    }
   }
 
   function viewRow(it, i) {
@@ -391,13 +546,13 @@
 
     // Tapping anywhere on the row (except delete) opens it for editing
     li.addEventListener('click', (e) => {
-      if (!e.target.closest('.del')) startEdit(i);
+      if (!e.target.closest('.del')) startEdit(it.id);
     });
     del.addEventListener('click', () => {
       const what = fmt(it.amount) + (it.detail ? ' · ' + it.detail : '');
       if (!confirm('Delete this transaction?\n\n' + TYPES[it.type] + '  ' + what)) return;
       snapshot();
-      items.splice(i, 1);
+      items = items.filter((x) => x !== it);
       editing = null;
       commit('Deleted ' + what);
     });
@@ -416,14 +571,18 @@
         '<input class="e-det" placeholder="Detail" aria-label="Detail">' +
       '</div>' +
       '<div class="edit-actions">' +
+        '<input class="e-date" type="date" aria-label="Date">' +
         '<button class="cancel" type="button">Cancel</button>' +
         '<button class="save" type="button">Save</button>' +
       '</div>';
     const typesBox = li.querySelector('.edit-types');
     const amtIn = li.querySelector('.e-amt');
     const detIn = li.querySelector('.e-det');
+    const dateIn = li.querySelector('.e-date');
     amtIn.value = it.amount;
     detIn.value = it.detail;
+    dateIn.value = it.date;
+    dateIn.max = todayKey();
 
     for (const [key, label] of Object.entries(TYPES)) {
       const b = document.createElement('button');
@@ -447,10 +606,17 @@
         amtIn.focus();
         return;
       }
-      Object.assign(it, { type: draftType, amount, detail: detIn.value.trim() });
+      const date = dateIn.value || it.date;
+      const moved = date !== it.date;
+      if (moved) snapshot();
+      Object.assign(it, { type: draftType, amount, detail: detIn.value.trim(), date });
       editing = null;
-      save();
-      render();
+      if (moved) {
+        commit('Moved to ' + dayLabel(date));
+      } else {
+        save();
+        render();
+      }
     };
     const cancelEdit = () => { editing = null; render(); };
 
@@ -464,16 +630,42 @@
     return li;
   }
 
-  function startEdit(i) {
-    editing = i;
+  function startEdit(id) {
+    editing = id;
     render();
-    const li = list.children[i];
+    const li = list.querySelector('li.editing');
     const input = li.querySelector('.e-amt');
     input.focus({ preventScroll: true });
     input.select();
     li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
+  // ---- Days ----
+  function setDay(k) {
+    const t = todayKey();
+    viewDay = k > t ? t : k;
+    editing = null;
+    render();
+  }
+
+  prevBtn.addEventListener('click', () => setDay(shiftDay(viewDay, -1)));
+  nextBtn.addEventListener('click', () => setDay(shiftDay(viewDay, 1)));
+  todayBtn.addEventListener('click', () => setDay(todayKey()));
+  dayInput.addEventListener('change', () => { if (dayInput.value) setDay(dayInput.value); });
+  dayInput.addEventListener('click', () => { try { dayInput.showPicker(); } catch (e) {} });
+
+  // When the date changes while the page is open, a page showing "today" moves on to the new day
+  function checkNewDay() {
+    const t = todayKey();
+    if (t === lastToday || editing !== null) return;
+    if (viewDay === lastToday) viewDay = t;
+    lastToday = t;
+    render();
+  }
+  setInterval(checkNewDay, 30000);
+  document.addEventListener('visibilitychange', checkNewDay);
+
+  // ---- Undo ----
   function snapshot() { undoSnapshot = items.map((it) => ({ ...it })); }
 
   function commit(message) {
@@ -495,6 +687,7 @@
     render();
   });
 
+  // ---- Add / clear ----
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const amount = parseAmount(amountIn.value);
@@ -503,22 +696,24 @@
       amountIn.focus();
       return;
     }
-    items.push({ type: currentType, amount, detail: detailIn.value.trim() });
+    items.push({ id: uid(), date: viewDay, type: currentType, amount, detail: detailIn.value.trim() });
     save();
     render();
     form.reset();
     amountIn.focus();
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    const last = list.lastElementChild;
+    if (last) last.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 
   amountIn.addEventListener('input', () => amountIn.classList.remove('bad'));
 
-  $('clear').addEventListener('click', () => {
-    if (!items.length || !confirm('Delete all ' + items.length + ' transactions?')) return;
+  clearBtn.addEventListener('click', () => {
+    const count = items.filter((it) => it.date === viewDay).length;
+    if (!count || !confirm('Delete all ' + plural(count) + ' on ' + dayLabel(viewDay) + '?')) return;
     snapshot();
-    items = [];
+    items = items.filter((it) => it.date !== viewDay);
     editing = null;
-    commit('All transactions cleared');
+    commit('Cleared ' + dayLabel(viewDay));
   });
 
   setType(currentType);
